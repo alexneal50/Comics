@@ -124,11 +124,12 @@ const COMICS = [
 ];
 
 /*
-  DEFAULT_VALUES holds the starting ballpark estimates (from the September 2026
-  valuation pass) keyed by comicKey(series, issue). Once you sign in and save a
-  real value for a comic, that overrides the default here for every visitor.
+  DEFAULT_VALUES holds the starting ballpark estimates in GBP (converted from the
+  original USD estimates at approx. $1 = £0.75, September 2026), keyed by
+  comicKey(series, issue). Once you sign in and save a real value for a comic,
+  that overrides the default here for every visitor.
 */
-const DEFAULT_VALUES = {"action-comics-vol-1-282":[40,70],"the-amazing-spider-man-vol-1-46":[120,190],"the-amazing-spider-man-vol-1-101a":[200,280],"the-amazing-spider-man-vol-1-150":[60,120],"the-amazing-spider-man-vol-1-194a":[210,260],"the-amazing-spider-man-vol-1-306a":[50,100],"the-amazing-spider-man-vol-1-352a":[20,40],"the-avengers-vol-1-87a":[150,260],"batman-vol-1-127":[60,120],"batman-vol-1-200":[150,280],"batman-damned-1b":[40,80],"batman-europa-1b":[30,60],"black-panther-vol-1-1":[90,140],"civil-war-vol-1-1d":[80,150],"daredevil-vol-6-25j":[30,60],"dark-nights-metal-1g":[60,120],"dceased-3j":[20,40],"detective-comics-vol-1-274":[50,100],"detective-comics-vol-3-1049b":[30,60],"eternals-vol-1-1c":[150,280],"fantastic-four-vol-1-46a":[150,280],"fantastic-four-vol-1-136":[60,120],"friendly-neighborhood-spider-man-vol-2-1b":[60,120],"giant-size-defenders-1":[40,80],"green-lantern-vol-2-85a":[400,700],"green-lantern-vol-2-86":[150,300],"house-of-m-vol-1-3b":[40,80],"the-incredible-hulk-vol-1-104":[80,150],"iron-man-vol-1-1":[550,700],"journey-into-mystery-vol-1-115":[150,300],"marvel-spotlight-vol-2-1":[30,60],"marvel-super-heroes-secret-wars-8a":[500,900],"marvel-team-up-vol-1-95b":[80,150],"ms-marvel-vol-1-16":[40,80],"ms-marvel-vol-1-18":[80,150],"new-mutants-vol-1-86a":[60,120],"new-mutants-vol-1-100a":[100,180],"nick-fury-agent-of-shield-vol-1-2":[80,150],"nova-vol-1-1b":[100,200],"power-pack-vol-1-1a":[60,120],"sensational-she-hulk-1b":[30,60],"silver-surfer-vol-1-10":[40,80],"the-spectacular-spider-man-vol-1-1a":[100,200],"spider-woman-vol-1-1a":[150,280],"sub-mariner-vol-1-7":[60,120],"superman-vol-1-100":[150,300],"superman-vol-3-50c":[30,60],"tales-of-suspense-vol-1-57":[700,850],"thor-vol-1-339a":[60,120],"ultimate-fallout-4a":[400,475],"ultimate-wolverine-vs-hulk":[30,60],"uncanny-x-men-vol-1-14a":[200,350],"uncanny-x-men-vol-1-109b":[150,280],"uncanny-x-men-vol-1-130c":[150,280],"uncanny-x-men-vol-1-140a":[60,120],"venomverse-war-stories-1a":[30,60],"watchmen-1a":[200,400],"wolverine-vol-1-3a":[60,120],"wolverine-vol-2-1a":[80,150],"x-force-vol-3-1a":[30,60]};
+const DEFAULT_VALUES = {"action-comics-vol-1-282":[30,50],"the-amazing-spider-man-vol-1-46":[90,140],"the-amazing-spider-man-vol-1-101a":[150,210],"the-amazing-spider-man-vol-1-150":[45,90],"the-amazing-spider-man-vol-1-194a":[160,195],"the-amazing-spider-man-vol-1-306a":[40,75],"the-amazing-spider-man-vol-1-352a":[15,30],"the-avengers-vol-1-87a":[110,195],"batman-vol-1-127":[45,90],"batman-vol-1-200":[110,210],"batman-damned-1b":[30,60],"batman-europa-1b":[20,45],"black-panther-vol-1-1":[70,105],"civil-war-vol-1-1d":[60,110],"daredevil-vol-6-25j":[20,45],"dark-nights-metal-1g":[45,90],"dceased-3j":[15,30],"detective-comics-vol-1-274":[40,75],"detective-comics-vol-3-1049b":[20,45],"eternals-vol-1-1c":[110,210],"fantastic-four-vol-1-46a":[110,210],"fantastic-four-vol-1-136":[45,90],"friendly-neighborhood-spider-man-vol-2-1b":[45,90],"giant-size-defenders-1":[30,60],"green-lantern-vol-2-85a":[300,525],"green-lantern-vol-2-86":[110,225],"house-of-m-vol-1-3b":[30,60],"the-incredible-hulk-vol-1-104":[60,110],"iron-man-vol-1-1":[410,525],"journey-into-mystery-vol-1-115":[110,225],"marvel-spotlight-vol-2-1":[20,45],"marvel-super-heroes-secret-wars-8a":[375,675],"marvel-team-up-vol-1-95b":[60,110],"ms-marvel-vol-1-16":[30,60],"ms-marvel-vol-1-18":[60,110],"new-mutants-vol-1-86a":[45,90],"new-mutants-vol-1-100a":[75,135],"nick-fury-agent-of-shield-vol-1-2":[60,110],"nova-vol-1-1b":[75,150],"power-pack-vol-1-1a":[45,90],"sensational-she-hulk-1b":[20,45],"silver-surfer-vol-1-10":[30,60],"the-spectacular-spider-man-vol-1-1a":[75,150],"spider-woman-vol-1-1a":[110,210],"sub-mariner-vol-1-7":[45,90],"superman-vol-1-100":[110,225],"superman-vol-3-50c":[20,45],"tales-of-suspense-vol-1-57":[525,640],"thor-vol-1-339a":[45,90],"ultimate-fallout-4a":[300,355],"ultimate-wolverine-vs-hulk":[20,45],"uncanny-x-men-vol-1-14a":[150,260],"uncanny-x-men-vol-1-109b":[110,210],"uncanny-x-men-vol-1-130c":[110,210],"uncanny-x-men-vol-1-140a":[45,90],"venomverse-war-stories-1a":[20,45],"watchmen-1a":[150,300],"wolverine-vol-1-3a":[45,90],"wolverine-vol-2-1a":[60,110],"x-force-vol-3-1a":[20,45]};
 
 function comicKey(series, issue){
   return (series + '|' + (issue || '')).toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
@@ -241,7 +242,7 @@ function valueRowHTML(c){
   if(val){
     const [lo, hi] = val;
     const tag = live ? `<span class="value-tag verified">Owner-verified</span>` : `<span class="value-tag estimate">Estimate</span>`;
-    display = `<div class="value-line">Est. value: <span class="amt">$${lo.toLocaleString()}–$${hi.toLocaleString()}</span>${tag}</div>`;
+    display = `<div class="value-line">Est. value: <span class="amt">£${lo.toLocaleString()}–£${hi.toLocaleString()}</span>${tag}</div>`;
   } else {
     display = `<div class="value-line" style="color:var(--text-muted)">No value on file yet</div>`;
   }
@@ -251,8 +252,8 @@ function valueRowHTML(c){
     const hi = val ? val[1] : '';
     editForm = `
       <div class="value-edit">
-        <input type="number" id="valLowInput" placeholder="Low $" value="${lo}">
-        <input type="number" id="valHighInput" placeholder="High $" value="${hi}">
+        <input type="number" id="valLowInput" placeholder="Low £" value="${lo}">
+        <input type="number" id="valHighInput" placeholder="High £" value="${hi}">
         <button id="saveValueBtn" data-key="${esc(key)}">Save value</button>
       </div>
       <div class="value-save-msg" id="valueSaveMsg"></div>
