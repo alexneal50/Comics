@@ -248,3 +248,28 @@ nav.sitenav .brand{ font-family:'Fraunces',serif; font-weight:600; color:#efe8d8
 .home-card p{ font-size: 13.5px; color: var(--text-muted); margin: 0 0 14px; line-height:1.5; }
 .home-card .go{ font-size: 12.5px; color: var(--brass-deep); font-weight:600; }
 .section-intro{ max-width: 640px; color: var(--text-muted); font-size: 14.5px; line-height:1.55; margin: 0 0 20px; }
+
+/* --- value editor additions --- */
+.auth-box{ margin-left: auto; display:flex; align-items:center; gap: 10px; }
+.auth-btn{
+  font-family:'Work Sans',sans-serif; font-size: 12.5px; padding: 6px 14px; border-radius: 999px;
+  border: 1px solid var(--paper-line); background: transparent; color: #cfc7b2; cursor: pointer;
+}
+.auth-btn:hover{ border-color: var(--brass); color:#efe8d8; }
+.auth-status{ font-size: 12px; color: #a89f88; }
+.value-line{ margin-top: 4px; font-size: 14px; }
+.value-line .amt{ font-family:'Fraunces',serif; font-weight:700; }
+.value-tag{ font-size: 10.5px; padding: 2px 7px; border-radius: 4px; margin-left: 6px; vertical-align: middle; }
+.value-tag.estimate{ background: rgba(0,0,0,0.06); color: var(--text-muted); }
+.value-tag.verified{ background: rgba(169,120,47,0.22); color: var(--brass-deep); font-weight:600; }
+.value-edit{ display:flex; gap: 8px; align-items:center; margin-top: 10px; flex-wrap: wrap; }
+.value-edit input{
+  width: 90px; padding: 6px 8px; border-radius: 6px; border: 1px solid var(--paper-line);
+  background: var(--paper); color: var(--text-on-paper); font-family:'Work Sans',sans-serif; font-size: 13px;
+}
+.value-edit button{
+  font-family:'Work Sans',sans-serif; font-size: 12.5px; padding: 6px 14px; border-radius: 6px;
+  border: 1px solid var(--brass); background: var(--brass); color: #1b140a; font-weight:600; cursor:pointer;
+}
+.value-edit button:hover{ background: var(--brass-deep); }
+.value-save-msg{ font-size: 12px; color: var(--brass-deep); margin-top: 6px; }

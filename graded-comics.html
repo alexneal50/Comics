@@ -17,6 +17,10 @@
     <a href="index.html">Home</a>
     <a href="graded-comics.html" class="active">Graded Comics</a>
     <a href="raw-comics.html">Raw Comics</a>
+    <span class="auth-box" id="authBox">
+      <span class="auth-status" id="authStatus"></span>
+      <button class="auth-btn" id="authBtn">Sign in</button>
+    </span>
   </nav>
   <div class="hero-inner">
     <p class="hero-eyebrow">A PERSONAL ARCHIVE</p>
@@ -119,6 +123,20 @@ const COMICS = [
 {"series":"X-Force, Vol. 3","publisher":"Marvel Comics","issue":"1A","title":"Divided We Stand - Angels and Demons, Part 1","gradingCo":"CGC","grade":"9.8 Near Mint/Mint","age":"Modern","signedBy":null,"key":"Minor","keyReason":"Debut of the grey X-Force costumes","variantDesc":"Non-Bloody Claws","releaseDate":"Apr 2008","variant":"A","graderNotes":null,"coverDate":"Apr 2008","seriesGroup":"X-Force"}
 ];
 
+/*
+  DEFAULT_VALUES holds the starting ballpark estimates (from the September 2026
+  valuation pass) keyed by comicKey(series, issue). Once you sign in and save a
+  real value for a comic, that overrides the default here for every visitor.
+*/
+const DEFAULT_VALUES = {"action-comics-vol-1-282":[40,70],"the-amazing-spider-man-vol-1-46":[120,190],"the-amazing-spider-man-vol-1-101a":[200,280],"the-amazing-spider-man-vol-1-150":[60,120],"the-amazing-spider-man-vol-1-194a":[210,260],"the-amazing-spider-man-vol-1-306a":[50,100],"the-amazing-spider-man-vol-1-352a":[20,40],"the-avengers-vol-1-87a":[150,260],"batman-vol-1-127":[60,120],"batman-vol-1-200":[150,280],"batman-damned-1b":[40,80],"batman-europa-1b":[30,60],"black-panther-vol-1-1":[90,140],"civil-war-vol-1-1d":[80,150],"daredevil-vol-6-25j":[30,60],"dark-nights-metal-1g":[60,120],"dceased-3j":[20,40],"detective-comics-vol-1-274":[50,100],"detective-comics-vol-3-1049b":[30,60],"eternals-vol-1-1c":[150,280],"fantastic-four-vol-1-46a":[150,280],"fantastic-four-vol-1-136":[60,120],"friendly-neighborhood-spider-man-vol-2-1b":[60,120],"giant-size-defenders-1":[40,80],"green-lantern-vol-2-85a":[400,700],"green-lantern-vol-2-86":[150,300],"house-of-m-vol-1-3b":[40,80],"the-incredible-hulk-vol-1-104":[80,150],"iron-man-vol-1-1":[550,700],"journey-into-mystery-vol-1-115":[150,300],"marvel-spotlight-vol-2-1":[30,60],"marvel-super-heroes-secret-wars-8a":[500,900],"marvel-team-up-vol-1-95b":[80,150],"ms-marvel-vol-1-16":[40,80],"ms-marvel-vol-1-18":[80,150],"new-mutants-vol-1-86a":[60,120],"new-mutants-vol-1-100a":[100,180],"nick-fury-agent-of-shield-vol-1-2":[80,150],"nova-vol-1-1b":[100,200],"power-pack-vol-1-1a":[60,120],"sensational-she-hulk-1b":[30,60],"silver-surfer-vol-1-10":[40,80],"the-spectacular-spider-man-vol-1-1a":[100,200],"spider-woman-vol-1-1a":[150,280],"sub-mariner-vol-1-7":[60,120],"superman-vol-1-100":[150,300],"superman-vol-3-50c":[30,60],"tales-of-suspense-vol-1-57":[700,850],"thor-vol-1-339a":[60,120],"ultimate-fallout-4a":[400,475],"ultimate-wolverine-vs-hulk":[30,60],"uncanny-x-men-vol-1-14a":[200,350],"uncanny-x-men-vol-1-109b":[150,280],"uncanny-x-men-vol-1-130c":[150,280],"uncanny-x-men-vol-1-140a":[60,120],"venomverse-war-stories-1a":[30,60],"watchmen-1a":[200,400],"wolverine-vol-1-3a":[60,120],"wolverine-vol-2-1a":[80,150],"x-force-vol-3-1a":[30,60]};
+
+function comicKey(series, issue){
+  return (series + '|' + (issue || '')).toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
+}
+
+var LIVE_VALUES = {}; // filled from Firestore once it loads
+var isAdmin = false;
+
 const ERA_COLORS = { Atomic:'var(--era-atomic)', Silver:'var(--era-silver)', Bronze:'var(--era-bronze)', Modern:'var(--era-modern)' };
 function eraColor(age){ return ERA_COLORS[age] || 'var(--era-default)'; }
 function gradeNumber(g){ if(!g) return null; const m = g.match(/[\d.]+/); return m ? parseFloat(m[0]) : null; }
@@ -215,6 +233,34 @@ function render(){
   });
 }
 
+function valueRowHTML(c){
+  const key = comicKey(c.series, c.issue);
+  const live = LIVE_VALUES[key];
+  const val = live || DEFAULT_VALUES[key];
+  let display = '';
+  if(val){
+    const [lo, hi] = val;
+    const tag = live ? `<span class="value-tag verified">Owner-verified</span>` : `<span class="value-tag estimate">Estimate</span>`;
+    display = `<div class="value-line">Est. value: <span class="amt">$${lo.toLocaleString()}–$${hi.toLocaleString()}</span>${tag}</div>`;
+  } else {
+    display = `<div class="value-line" style="color:var(--text-muted)">No value on file yet</div>`;
+  }
+  let editForm = '';
+  if(isAdmin){
+    const lo = val ? val[0] : '';
+    const hi = val ? val[1] : '';
+    editForm = `
+      <div class="value-edit">
+        <input type="number" id="valLowInput" placeholder="Low $" value="${lo}">
+        <input type="number" id="valHighInput" placeholder="High $" value="${hi}">
+        <button id="saveValueBtn" data-key="${esc(key)}">Save value</button>
+      </div>
+      <div class="value-save-msg" id="valueSaveMsg"></div>
+    `;
+  }
+  return display + editForm;
+}
+
 function openModal(c){
   const backdrop = document.getElementById('modalBackdrop');
   const modal = document.getElementById('modalContent');
@@ -237,8 +283,13 @@ function openModal(c){
     </div>
     ${c.keyReason?`<div class="note-block"><label>Why it's a key issue</label>${esc(c.keyReason)}</div>`:''}
     ${c.graderNotes?`<div class="note-block"><label>Grader notes</label>${esc(c.graderNotes)}</div>`:''}
+    <div class="note-block">${valueRowHTML(c)}</div>
   `;
   modal.querySelector('.modal-close').addEventListener('click', closeModal);
+  if(isAdmin){
+    const saveBtn = modal.querySelector('#saveValueBtn');
+    if(saveBtn) saveBtn.addEventListener('click', ()=> saveValue(c));
+  }
   backdrop.classList.add('open');
 }
 function closeModal(){ document.getElementById('modalBackdrop').classList.remove('open'); }
@@ -264,6 +315,103 @@ function buildStats(){
 buildStats();
 buildChips();
 render();
+</script>
+
+<script type="module">
+  // ============================================================
+  // PASTE YOUR FIREBASE CONFIG BELOW (from Firebase console ->
+  // Project settings -> Your apps -> the web app you registered).
+  // Everything below this line you can leave as-is.
+  // ============================================================
+  const firebaseConfig = {
+    apiKey: "AIzaSyBCcWqwx9WaPN_Z-SfvGX84I15RCkcK9qk",
+    authDomain: "comics-9af44.firebaseapp.com",
+    projectId: "comics-9af44",
+    storageBucket: "comics-9af44.firebasestorage.app",
+    messagingSenderId: "1047883288836",
+    appId: "1:1047883288836:web:4f9c45cd33e76134e0c051"
+  };
+
+  const ADMIN_EMAIL = "alexneal50@gmail.com";
+
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+  import {
+    getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged
+  } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+  import {
+    getFirestore, collection, getDocs, doc, setDoc, serverTimestamp
+  } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+  const provider = new GoogleAuthProvider();
+
+  const authBtn = document.getElementById('authBtn');
+  const authStatus = document.getElementById('authStatus');
+
+  authBtn.addEventListener('click', () => {
+    if(auth.currentUser){
+      signOut(auth);
+    } else {
+      signInWithPopup(auth, provider).catch(err => {
+        console.error(err);
+        alert('Sign-in failed: ' + err.message);
+      });
+    }
+  });
+
+  onAuthStateChanged(auth, (user) => {
+    if(user){
+      window.isAdmin = (user.email === ADMIN_EMAIL);
+      authStatus.textContent = user.email + (window.isAdmin ? ' (editing on)' : ' (view only)');
+      authBtn.textContent = 'Sign out';
+    } else {
+      window.isAdmin = false;
+      authStatus.textContent = '';
+      authBtn.textContent = 'Sign in';
+    }
+    render(); // re-render cards/grid
+  });
+
+  // Load current values from Firestore once, on page load
+  async function loadValues(){
+    try{
+      const snap = await getDocs(collection(db, 'comicValues'));
+      const values = {};
+      snap.forEach(d => {
+        const data = d.data();
+        values[d.id] = [data.low, data.high];
+      });
+      window.LIVE_VALUES = values;
+    } catch(err){
+      console.error('Could not load values from Firestore', err);
+    }
+  }
+  loadValues();
+
+  // Called from the page's own script (openModal) when Save is clicked
+  window.saveValue = async function(c){
+    const key = comicKey(c.series, c.issue);
+    const lo = parseFloat(document.getElementById('valLowInput').value);
+    const hi = parseFloat(document.getElementById('valHighInput').value);
+    const msg = document.getElementById('valueSaveMsg');
+    if(isNaN(lo) || isNaN(hi)){
+      msg.textContent = 'Enter both a low and high value.';
+      return;
+    }
+    try{
+      await setDoc(doc(db, 'comicValues', key), {
+        low: lo, high: hi, updatedAt: serverTimestamp()
+      });
+      LIVE_VALUES[key] = [lo, hi];
+      msg.textContent = 'Saved.';
+      openModal(c); // refresh modal to show the new value
+    } catch(err){
+      console.error(err);
+      msg.textContent = 'Could not save — check you are signed in as ' + ADMIN_EMAIL;
+    }
+  };
 </script>
 </body>
 </html>
