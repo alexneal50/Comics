@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Add Photos — The Long Box</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,500&family=Work+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<header class="hero">
+  <nav class="sitenav">
+    <span class="brand">The Long Box</span>
+    <a href="index.html">Home</a>
+    <a href="graded-comics.html">Graded Comics</a>
+    <a href="raw-comics.html">Raw Comics</a>
+    <a href="add-photos.html" class="active">Add Photos</a>
+    <span class="auth-box" id="authBox">
+      <span class="auth-status" id="authStatus"></span>
+      <button class="auth-btn" id="authBtn">Sign in</button>
+    </span>
+  </nav>
+  <div class="hero-inner">
+    <p class="hero-eyebrow">A PERSONAL ARCHIVE</p>
+    <h1 class="hero-title">Add Photos</h1>
+    <p class="hero-sub">Attach a real photo of your own slab to any graded comic — drag and drop on desktop, or use your phone's camera on mobile.</p>
+  </div>
+</header>
+
+<main>
+  <div id="readonlyNote" class="readonly-note" style="display:none">
+    Sign in as the collection owner (top right) to add or replace photos. Everyone can still see photos already added, below.
+  </div>
+
+  <div class="upload-shell" id="uploadShell" style="display:none">
+    <div>
+      <div class="picker-box">
+        <label>1. Which comic is this a photo of?</label>
+        <input class="picker-input" id="pickerInput" type="text" placeholder="Start typing a series name or issue number…" autocomplete="off">
+        <div class="picker-results" id="pickerResults"></div>
+        <div class="picker-selected" id="pickerSelected"></div>
+      </div>
+
+      <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:6px;">2. Add the photo</label>
+      <div class="dropzone" id="dropzone">
+        <div class="dz-title">Drag & drop a photo here</div>
+        <p>or use one of the buttons below</p>
+        <p>JPG, PNG or WebP · one photo per comic (uploading a new one replaces the old)</p>
+        <div class="dz-buttons">
+          <button class="dz-btn" id="chooseFileBtn" type="button">Upload photo</button>
+          <button class="dz-btn secondary" id="useCameraBtn" type="button">Use camera</button>
+        </div>
+        <input type="file" id="fileInput" accept="image/*" style="display:none">
+        <input type="file" id="cameraInput" accept="image/*" capture="environment" style="display:none">
+      </div>
+
+      <div class="preview-row" id="previewRow" style="display:none">
+        <img id="previewImg" alt="Preview">
+        <div>
+          <button class="dz-btn" id="saveBtn" type="button">Save photo</button>
+          <div class="save-msg" id="saveMsg"></div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:6px;">About storage</label>
+      <div class="readonly-note" style="margin-bottom:0;">
+        Photos are resized to a max of 1200px and saved as JPEGs before upload, to keep things small.
+        Cloudinary's free plan (no card needed) includes 25 credits a month, where 1 credit covers roughly
+        1GB of storage or bandwidth — for a collection this size, storage alone would take years to get
+        close to that limit.
+      </div>
+    </div>
+  </div>
+
+  <h3 style="font-family:'Fraunces',serif; margin-top: 34px;">All comics</h3>
+  <p class="section-intro">Tap any comic below to jump straight to it in the picker above.</p>
+  <div class="photo-grid" id="photoGrid"></div>
+</main>
+
+<footer>Private collection catalogue · shared for viewing only</footer>
+
+<script>
+const COMICS_MINI = [{"series":"Action Comics, Vol. 1","issue":"282","title":"Superman's Toughest Day! / The Supergirl of Tomorrow!"},{"series":"The Amazing Spider-Man, Vol. 1","issue":"46","title":"The Sinister Shocker!"},{"series":"The Amazing Spider-Man, Vol. 1","issue":"101A","title":"A Monster Called... Morbius"},{"series":"The Amazing Spider-Man, Vol. 1","issue":"150","title":"Spider-Man...Or Spider-Clone?"},{"series":"The Amazing Spider-Man, Vol. 1","issue":"194A","title":"Never Let The Black Cat Cross Your Path!"},{"series":"The Amazing Spider-Man, Vol. 1","issue":"306A","title":"Humbugged!"},{"series":"The Amazing Spider-Man, Vol. 1","issue":"352A","title":"Acts of Vengeance - Death Walk!"},{"series":"The Avengers, Vol. 1","issue":"87A","title":"Look Homeward, Avenger!"},{"series":"Batman, Vol. 1","issue":"127","title":"Batman's Super-Partner"},{"series":"Batman, Vol. 1","issue":"200","title":"The Man Who Radiated Fear!"},{"series":"Batman: Damned","issue":"1B","title":"Book One"},{"series":"Batman: Europa","issue":"1B","title":"1: Berlin"},{"series":"Black Panther, Vol. 1","issue":"1","title":"King Solomon's Frog!"},{"series":"Civil War, Vol. 1","issue":"1D","title":"Civil War - Civil War, Part One"},{"series":"Daredevil, Vol. 6","issue":"25J","title":"The Red Fist, The Red Fist, Part 1"},{"series":"Dark Nights: Metal","issue":"1G","title":"Dark Nights: Metal - Dark Nights: Metal, Part 1"},{"series":"DCeased","issue":"3J","title":"Red Sea"},{"series":"Detective Comics, Vol. 1","issue":"274","title":"The Hermit of Mystery Island / The Human Flame"},{"series":"Detective Comics, Vol. 3","issue":"1049B","title":"The Tower, Part Three/House of Gotham (Chapter Three)"},{"series":"Eternals, Vol. 1","issue":"1C","title":"The Day of The Gods"},{"series":"Fantastic Four, Vol. 1","issue":"46A","title":"Those Who Would Destroy Us!"},{"series":"Fantastic Four, Vol. 1","issue":"136","title":"Rock Around the Cosmos!"},{"series":"Friendly Neighborhood Spider-Man, Vol. 2","issue":"1B","title":null},{"series":"Giant-Size Defenders","issue":"1","title":"The Way They Were!"},{"series":"Green Lantern, Vol. 2","issue":"85A","title":"Snowbirds Don't Fly / The Strange Trial Of Green Lantern"},{"series":"Green Lantern, Vol. 2","issue":"86","title":"They Say It'll Kill Me... But They Won't Say When!"},{"series":"House of M, Vol. 1","issue":"3B","title":"House of M"},{"series":"The Incredible Hulk, Vol. 1","issue":"104","title":"Ring Around the Rhino!"},{"series":"Iron Man, Vol. 1","issue":"1","title":"Alone Against a.I.m. / the Origin of Iron Man"},{"series":"Journey Into Mystery, Vol. 1","issue":"115","title":"The Vengeance of the Thunder God!"},{"series":"Marvel Spotlight, Vol. 2","issue":"1","title":"The Saturn Storm"},{"series":"Marvel Super Heroes Secret Wars","issue":"8A","title":"Secret Wars - Invasion"},{"series":"Marvel Team-Up, Vol. 1","issue":"95B","title":"...And No Birds Sing!"},{"series":"Ms. Marvel, Vol. 1","issue":"16","title":"The Deep Deadly Silence"},{"series":"Ms. Marvel, Vol. 1","issue":"18","title":"The St. Valentine's Day Avengers Massacre!"},{"series":"New Mutants, Vol. 1","issue":"86A","title":"Acts of Vengeance - Bang! You're Dead!"},{"series":"New Mutants, Vol. 1","issue":"100A","title":"The End Of The Beginning"},{"series":"Nick Fury Agent of Shield, Vol. 1","issue":"2","title":"So Shall Ye Reap... Death!"},{"series":"Nova, Vol. 1","issue":"1B","title":"Nova"},{"series":"Power Pack, Vol. 1","issue":"1A","title":"Power Play"},{"series":"Sensational She-Hulk","issue":"1B","title":"Second Chance"},{"series":"Silver Surfer, Vol. 1","issue":"10","title":"A World He Never Made!"},{"series":"The Spectacular Spider-Man, Vol. 1","issue":"1A","title":"Twice Stings The Tarantula!"},{"series":"Spider-Woman, Vol. 1","issue":"1A","title":"...A Future Uncertain!"},{"series":"Sub-Mariner, Vol. 1","issue":"7","title":"For President -- the Man Called Destiny!"},{"series":"Superman, Vol. 1","issue":"100","title":null},{"series":"Superman, Vol. 3","issue":"50C","title":"What Could Have Been, What Can Still Be, And What Is"},{"series":"Tales of Suspense, Vol. 1","issue":"57","title":"Hawkeye, the Marksman! / The Runner / The Watcher's Power"},{"series":"Thor, Vol. 1","issue":"339A","title":"Something Old, Something New"},{"series":"Ultimate Fallout","issue":"4A","title":"Ultimate Fallout, Chapter Four"},{"series":"Ultimate Wolverine vs. Hulk","issue":null,"title":"Ultimate Wolverine vs. Hulk"},{"series":"Uncanny X-Men, Vol. 1","issue":"14A","title":"Among Us Stalk... The Sentinels"},{"series":"Uncanny X-Men, Vol. 1","issue":"109B","title":"Home Are The Heroes!"},{"series":"Uncanny X-Men, Vol. 1","issue":"130C","title":"Dazzler"},{"series":"Uncanny X-Men, Vol. 1","issue":"140A","title":"Rage!"},{"series":"Venomverse: War Stories","issue":"1A","title":null},{"series":"Watchmen","issue":"1A","title":"At Midnight, All the Agents..."},{"series":"Wolverine, Vol. 1","issue":"3A","title":"Loss"},{"series":"Wolverine, Vol. 2","issue":"1A","title":"Sword Quest"},{"series":"X-Force, Vol. 3","issue":"1A","title":"Divided We Stand - Angels and Demons, Part 1"}];
+
+function comicKey(series, issue){
+  return (series + '|' + (issue || '')).toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
+}
+function esc(s){ return (s==null?'':String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;'); }
+
+var isAdmin = false;
+var PHOTOS = {}; // comicKey -> download URL, filled from Firestore
+var selectedComic = null;
+var pendingFile = null;
+
+const pickerInput = document.getElementById('pickerInput');
+const pickerResults = document.getElementById('pickerResults');
+const pickerSelected = document.getElementById('pickerSelected');
+
+pickerInput.addEventListener('input', () => {
+  const q = pickerInput.value.trim().toLowerCase();
+  if(!q){ pickerResults.classList.remove('open'); pickerResults.innerHTML=''; return; }
+  const matches = COMICS_MINI.filter(c =>
+    c.series.toLowerCase().includes(q) || (c.issue||'').toLowerCase().includes(q)
+  ).slice(0, 20);
+  pickerResults.innerHTML = matches.map((c,i) =>
+    `<div class="picker-result" data-idx="${COMICS_MINI.indexOf(c)}">${esc(c.series)}${c.issue?(' #'+esc(c.issue)):''}</div>`
+  ).join('');
+  pickerResults.classList.add('open');
+  pickerResults.querySelectorAll('.picker-result').forEach(el=>{
+    el.addEventListener('click', () => selectComic(COMICS_MINI[parseInt(el.dataset.idx)]));
+  });
+});
+
+function selectComic(c){
+  selectedComic = c;
+  pickerInput.value = c.series + (c.issue ? (' #'+c.issue) : '');
+  pickerResults.classList.remove('open');
+  const key = comicKey(c.series, c.issue);
+  const existing = PHOTOS[key];
+  pickerSelected.innerHTML = `Selected: <b>${esc(c.series)}${c.issue?(' #'+esc(c.issue)):''}</b>` +
+    (existing ? ' — already has a photo, uploading a new one will replace it.' : ' — no photo yet.');
+  pickerSelected.classList.add('show');
+}
+
+// Dropzone wiring
+const dropzone = document.getElementById('dropzone');
+const fileInput = document.getElementById('fileInput');
+const cameraInput = document.getElementById('cameraInput');
+const previewRow = document.getElementById('previewRow');
+const previewImg = document.getElementById('previewImg');
+const saveMsg = document.getElementById('saveMsg');
+
+document.getElementById('chooseFileBtn').addEventListener('click', () => fileInput.click());
+document.getElementById('useCameraBtn').addEventListener('click', () => cameraInput.click());
+fileInput.addEventListener('change', (e) => handleFile(e.target.files[0]));
+cameraInput.addEventListener('change', (e) => handleFile(e.target.files[0]));
+
+['dragenter','dragover'].forEach(ev => dropzone.addEventListener(ev, (e) => {
+  e.preventDefault(); dropzone.classList.add('drag');
+}));
+['dragleave','drop'].forEach(ev => dropzone.addEventListener(ev, (e) => {
+  e.preventDefault(); dropzone.classList.remove('drag');
+}));
+dropzone.addEventListener('drop', (e) => {
+  const f = e.dataTransfer.files[0];
+  if(f) handleFile(f);
+});
+dropzone.addEventListener('click', (e) => {
+  if(e.target === dropzone) fileInput.click();
+});
+
+function handleFile(file){
+  if(!file || !file.type.startsWith('image/')) return;
+  pendingFile = file;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    previewImg.src = e.target.result;
+    previewRow.style.display = 'flex';
+    saveMsg.textContent = '';
+  };
+  reader.readAsDataURL(file);
+}
+
+document.getElementById('saveBtn').addEventListener('click', () => {
+  if(!selectedComic){ saveMsg.textContent = 'Pick a comic first.'; return; }
+  if(!pendingFile){ saveMsg.textContent = 'Choose or drop a photo first.'; return; }
+  window.uploadComicPhoto(selectedComic, pendingFile, saveMsg);
+});
+
+function renderGrid(){
+  const grid = document.getElementById('photoGrid');
+  grid.innerHTML = COMICS_MINI.map(c => {
+    const key = comicKey(c.series, c.issue);
+    const url = PHOTOS[key];
+    const thumb = url
+      ? `<img class="thumb" src="${esc(url)}" alt="${esc(c.series)}">`
+      : `<div class="thumb-placeholder">No photo yet</div>`;
+    return `<div class="photo-tile" data-idx="${COMICS_MINI.indexOf(c)}">
+      ${thumb}
+      <div class="cap"><b>${esc(c.series)}</b>${c.issue?('#'+esc(c.issue)):''}</div>
+    </div>`;
+  }).join('');
+  grid.querySelectorAll('.photo-tile').forEach(el=>{
+    el.addEventListener('click', () => {
+      if(!isAdmin) return;
+      selectComic(COMICS_MINI[parseInt(el.dataset.idx)]);
+      window.scrollTo({top:0, behavior:'smooth'});
+    });
+  });
+}
+
+// Called once Firebase module below has loaded PHOTOS + auth state
+window.onLongBoxReady = function(){
+  renderGrid();
+  const shell = document.getElementById('uploadShell');
+  const note = document.getElementById('readonlyNote');
+  if(isAdmin){ shell.style.display='grid'; note.style.display='none'; }
+  else { shell.style.display='none'; note.style.display='block'; }
+};
+</script>
+
+<script type="module">
+  // ============================================================
+  // Same Firebase project as graded-comics.html — paste the same
+  // config here if you ever change projects.
+  // ============================================================
+  const firebaseConfig = {
+    apiKey: "AIzaSyBCcWqwx9WaPN_Z-SfvGX84I15RCkcK9qk",
+    authDomain: "comics-9af44.firebaseapp.com",
+    projectId: "comics-9af44",
+    storageBucket: "comics-9af44.firebasestorage.app",
+    messagingSenderId: "1047883288836",
+    appId: "1:1047883288836:web:4f9c45cd33e76134e0c051"
+  };
+
+  // ============================================================
+  // PASTE YOUR CLOUDINARY DETAILS HERE (from the Cloudinary
+  // dashboard + the unsigned upload preset you created).
+  // Photos are uploaded to Cloudinary; Firestore just stores the
+  // resulting URL, so no Firebase Storage / Blaze plan is needed.
+  // ============================================================
+  const CLOUDINARY_CLOUD_NAME = "bdjxljvf";
+  const CLOUDINARY_UPLOAD_PRESET = "e5n1likv";
+
+  const ADMIN_EMAIL = "alexneal50@gmail.com";
+  const MAX_DIMENSION = 1200; // resize photos client-side before upload
+
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+  import {
+    getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged
+  } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+  import {
+    getFirestore, collection, getDocs, doc, setDoc, serverTimestamp
+  } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+  const provider = new GoogleAuthProvider();
+
+  const authBtn = document.getElementById('authBtn');
+  const authStatus = document.getElementById('authStatus');
+
+  authBtn.addEventListener('click', () => {
+    if(auth.currentUser){ signOut(auth); }
+    else {
+      signInWithPopup(auth, provider).catch(err => alert('Sign-in failed: ' + err.message));
+    }
+  });
+
+  onAuthStateChanged(auth, (user) => {
+    if(user){
+      window.isAdmin = (user.email === ADMIN_EMAIL);
+      authStatus.textContent = user.email + (window.isAdmin ? ' (editing on)' : ' (view only)');
+      authBtn.textContent = 'Sign out';
+    } else {
+      window.isAdmin = false;
+      authStatus.textContent = '';
+      authBtn.textContent = 'Sign in';
+    }
+    if(window.onLongBoxReady) window.onLongBoxReady();
+  });
+
+  async function loadPhotos(){
+    try{
+      const snap = await getDocs(collection(db, 'comicPhotos'));
+      const photos = {};
+      snap.forEach(d => { photos[d.id] = d.data().url; });
+      window.PHOTOS = photos;
+    } catch(err){
+      console.error('Could not load photos', err);
+    }
+    if(window.onLongBoxReady) window.onLongBoxReady();
+  }
+  loadPhotos();
+
+  function resizeImage(file, maxDim){
+    return new Promise((resolve) => {
+      const img = new Image();
+      const reader = new FileReader();
+      reader.onload = (e) => { img.src = e.target.result; };
+      img.onload = () => {
+        let { width, height } = img;
+        if(width > maxDim || height > maxDim){
+          if(width > height){ height = Math.round(height * maxDim / width); width = maxDim; }
+          else { width = Math.round(width * maxDim / height); height = maxDim; }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width; canvas.height = height;
+        canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+        canvas.toBlob((blob) => resolve(blob), 'image/jpeg', 0.85);
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  window.uploadComicPhoto = async function(comic, file, msgEl){
+    const key = comicKey(comic.series, comic.issue); // shared with graded-comics.html — do not change the format here without changing it there too
+    msgEl.textContent = 'Uploading…';
+    try{
+      const resized = await resizeImage(file, MAX_DIMENSION);
+
+      const formData = new FormData();
+      formData.append('file', resized, key + '.jpg');
+      formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+      formData.append('public_id', key); // re-uploading the same comic overwrites its old photo on Cloudinary too
+
+      const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`, {
+        method: 'POST',
+        body: formData
+      });
+      const data = await res.json();
+      if(!res.ok || !data.secure_url){
+        throw new Error(data.error ? data.error.message : 'Cloudinary upload failed');
+      }
+      const url = data.secure_url;
+
+      await setDoc(doc(db, 'comicPhotos', key), { url, updatedAt: serverTimestamp() });
+      window.PHOTOS[key] = url;
+      msgEl.textContent = 'Saved!';
+      if(window.onLongBoxReady) window.onLongBoxReady();
+    } catch(err){
+      console.error(err);
+      msgEl.textContent = 'Could not save — ' + (err.message || ('check you are signed in as ' + ADMIN_EMAIL));
+    }
+  };
+</script>
+</body>
+</html>

@@ -17,6 +17,7 @@
     <a href="index.html">Home</a>
     <a href="graded-comics.html" class="active">Graded Comics</a>
     <a href="raw-comics.html">Raw Comics</a>
+    <a href="add-photos.html">Add Photos</a>
     <span class="auth-box" id="authBox">
       <span class="auth-status" id="authStatus"></span>
       <button class="auth-btn" id="authBtn">Sign in</button>
@@ -137,6 +138,7 @@ function comicKey(series, issue){
 
 var LIVE_VALUES = {}; // filled from Firestore once it loads
 var isAdmin = false;
+var PHOTOS = {}; // comicKey -> photo URL, filled from Firestore (uploaded via add-photos.html)
 
 const ERA_COLORS = { Atomic:'var(--era-atomic)', Silver:'var(--era-silver)', Bronze:'var(--era-bronze)', Modern:'var(--era-modern)' };
 function eraColor(age){ return ERA_COLORS[age] || 'var(--era-default)'; }
@@ -193,8 +195,11 @@ function cardHTML(c, idx){
     : c.key==='Minor' ? `<span class="badge key-minor">Minor key</span>` : '';
   const signedBadge = c.signedBy ? `<span class="badge signed">✒ Signed</span>` : '';
   const pubBadge = c.publisher ? `<span class="badge publisher">${esc(c.publisher)}</span>` : '';
+  const photoUrl = PHOTOS[comicKey(c.series, c.issue)];
+  const photoHTML = photoUrl ? `<img src="${esc(photoUrl)}" alt="${esc(c.series)}" style="width:100%;height:150px;object-fit:cover;border-radius:6px;margin-bottom:10px;">` : '';
   return `<div class="slab" data-idx="${idx}" tabindex="0">
     <span class="era-tab" style="background:${eraColor(c.age)}"></span>
+    ${photoHTML}
     <div class="slab-top">
       <div>
         <div class="series-name">${esc(c.series)}</div>
@@ -273,8 +278,12 @@ function openModal(c){
   if(c.seriesGroup) facts.push(['Series group', c.seriesGroup]);
   if(c.signedBy) facts.push(['Signed by', c.signedBy]);
 
+  const photoUrl = PHOTOS[comicKey(c.series, c.issue)];
+  const photoHTML = photoUrl ? `<img src="${esc(photoUrl)}" alt="${esc(c.series)}" style="width:100%;max-height:320px;object-fit:contain;border-radius:8px;margin-bottom:16px;background:var(--paper);">` : '';
+
   modal.innerHTML = `
     <button class="modal-close" aria-label="Close">&times;</button>
+    ${photoHTML}
     <span class="modal-era" style="background:${eraColor(c.age)}">${esc(c.age||'—')} Age</span>
     <h2>${esc(c.series)}${c.issue?(' #'+esc(c.issue)):''}</h2>
     <div class="modal-issue">${esc(c.gradingCo||'')} · ${esc(c.grade||'')}${c.key&&c.key!=='No'?(' · '+esc(c.key)+' key issue'):''}</div>
@@ -390,6 +399,20 @@ render();
     }
   }
   loadValues();
+
+  // Load any photos added via add-photos.html, so they show up here too
+  async function loadPhotos(){
+    try{
+      const snap = await getDocs(collection(db, 'comicPhotos'));
+      const photos = {};
+      snap.forEach(d => { photos[d.id] = d.data().url; });
+      window.PHOTOS = photos;
+      render();
+    } catch(err){
+      console.error('Could not load photos from Firestore', err);
+    }
+  }
+  loadPhotos();
 
   // Called from the page's own script (openModal) when Save is clicked
   window.saveValue = async function(c){
