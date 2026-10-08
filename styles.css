@@ -340,3 +340,15 @@ nav.sitenav .brand{ font-family:'Fraunces',serif; font-weight:600; color:#efe8d8
   background: var(--paper-panel); border: 1px solid var(--paper-line); border-radius: 8px;
   padding: 16px 18px; font-size: 14px; color: var(--text-muted); margin-bottom: 20px;
 }
+
+
+/* ---- value totals ---- */
+.home-totals{ display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:16px; margin:30px 0 0; }
+.total-card{ background:var(--paper-panel); border:1px solid var(--paper-line); border-radius:10px; padding:18px 20px; }
+.total-card.big{ border:2px solid var(--brass); }
+.total-card .lbl{ font-size:12px; color:var(--text-muted); }
+.total-card .amt{ font-family:'Fraunces',serif; font-size:28px; font-weight:700; margin:4px 0 2px; }
+.total-card .sub{ font-size:12px; color:var(--text-muted); }
+.card-val{ font-family:'Fraunces',serif; font-weight:600; font-size:14px; color:var(--brass-deep); }
+.quick-val{ display:flex; gap:6px; margin-top:6px; }
+.quick-val input{ width:50%; min-width:0; border:1px solid var(--paper-line); background:var(--paper); color:var(--text-on-paper); border-radius:6px; padding:5px 7px; font:12px 'Work Sans',sans-serif; }

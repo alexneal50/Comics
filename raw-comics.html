@@ -25,6 +25,10 @@
     <a href="graded-comics.html">Graded Comics</a>
     <a href="raw-comics.html" class="active">Raw Comics</a>
     <a href="add-photos.html">Add Photos</a>
+    <span class="auth-box" id="authBox">
+      <span class="auth-status" id="authStatus"></span>
+      <button class="auth-btn" id="authBtn">Sign in</button>
+    </span>
   </nav>
   <div class="hero-inner">
     <p class="hero-eyebrow">A PERSONAL ARCHIVE</p>
@@ -63,6 +67,7 @@
   <div class="modal" id="modalContent" role="dialog" aria-modal="true"></div>
 </div>
 
+<script src="raw-defaults.js"></script>
 <script>
 /*
   RAW_COMICS holds every ungraded book. Each entry:
@@ -138,6 +143,10 @@ function cardHTML(c){
     : c.key==='Minor' ? `<span class="badge key-minor">Minor key</span>` : '';
   const signedBadge = c.signedBy ? `<span class="badge signed">✒ Signed</span>` : '';
   const pubBadge = c.publisher ? `<span class="badge publisher">${esc(c.publisher)}</span>` : '';
+  const ev = rawEff(c), live = RAW_VALUES[c._key];
+  const valHTML = isAdmin
+    ? `<div class="quick-val"><input type="number" min="0" step="1" placeholder="Low £${ev&&!live?' ('+ev.lo+')':''}" value="${live?live[0]:''}"><input type="number" min="0" step="1" placeholder="High £${ev&&!live?' ('+ev.hi+')':''}" value="${live?live[1]:''}"></div>`
+    : (ev ? `<div class="card-val">${ev.tag==='owner'?'':'~'}${fmtRange(ev.lo,ev.hi)}</div>` : '');
   return `<div class="slab" data-key="${esc(c.series)}|${esc(c.issue)}|${esc(c.coverDate)}" tabindex="0">
     <span class="era-tab" style="background:${eraColor(c.age)}"></span>
     <div class="slab-top">
@@ -151,6 +160,7 @@ function cardHTML(c){
     </div>
     <div class="slab-title">${esc(c.title||'')}</div>
     <div class="badges">${keyBadge}${signedBadge}${pubBadge}</div>
+    ${valHTML}
   </div>`;
 }
 
@@ -173,6 +183,15 @@ function render(){
     el.addEventListener('click', ()=> openModal(slice[i]));
     el.addEventListener('keypress', (e)=>{ if(e.key==='Enter') el.click(); });
   });
+  grid.querySelectorAll('.quick-val').forEach((q, i)=>{
+    q.addEventListener('click', (e)=> e.stopPropagation());
+    q.addEventListener('keypress', (e)=> e.stopPropagation());
+    q.querySelectorAll('input').forEach(inp=> inp.addEventListener('change', async ()=>{
+      const [a, b] = q.querySelectorAll('input');
+      const ok = await window.saveRawValue(slice[i], a.value, b.value);
+      q.style.outline = ok ? '' : '2px solid #8a2e28';
+    }));
+  });
   btn.style.display = visibleCount < currentList.length ? 'block' : 'none';
 }
 
@@ -180,6 +199,28 @@ document.getElementById('loadMoreBtn').addEventListener('click', ()=>{
   visibleCount += PAGE_SIZE;
   render();
 });
+
+function rawEff(c){
+  const live = RAW_VALUES[c._key];
+  if(live) return {lo:live[0], hi:live[1], tag:'owner'};
+  const d = (typeof RAW_DEFAULTS !== 'undefined') && RAW_DEFAULTS[c._key];
+  return d ? {lo:d[0], hi:d[1], tag: d[2] ? 'researched' : 'estimate'} : null;
+}
+function rawValueHTML(c){
+  const ev = rawEff(c);
+  const TAGS = {owner:['verified','Owner-verified'], researched:['verified','Researched'], estimate:['estimate','Estimate']};
+  const display = ev
+    ? `<div class="value-line">Est. value: <span class="amt">${fmtRange(ev.lo,ev.hi)}</span><span class="value-tag ${TAGS[ev.tag][0]}">${TAGS[ev.tag][1]}</span></div><div class="value-line" style="font-size:12px;color:var(--text-muted)">For a raw copy; depends on condition.</div>`
+    : `<div class="value-line" style="color:var(--text-muted)">No value on file yet</div>`;
+  const edit = isAdmin ? `
+    <div class="value-edit">
+      <input type="number" id="rawLoInput" placeholder="Low £" value="${ev?ev.lo:''}">
+      <input type="number" id="rawHiInput" placeholder="High £" value="${ev?ev.hi:''}">
+      <button id="rawSaveBtn">Save value</button>
+    </div>
+    <div class="value-save-msg" id="rawSaveMsg"></div>` : '';
+  return display + edit;
+}
 
 function openModal(c){
   const backdrop = document.getElementById('modalBackdrop');
@@ -201,8 +242,15 @@ function openModal(c){
       ${facts.map(([l,v])=>`<div class="fact"><label>${esc(l)}</label><div>${esc(v)}</div></div>`).join('')}
     </div>
     ${c.keyReason?`<div class="note-block"><label>Why it's a key issue</label>${esc(c.keyReason)}</div>`:''}
+    <div class="note-block">${rawValueHTML(c)}</div>
   `;
   modal.querySelector('.modal-close').addEventListener('click', closeModal);
+  const rawSave = modal.querySelector('#rawSaveBtn');
+  if(rawSave) rawSave.addEventListener('click', async ()=>{
+    const ok = await window.saveRawValue(c, modal.querySelector('#rawLoInput').value, modal.querySelector('#rawHiInput').value);
+    if(ok){ render(); openModal(c); modal.querySelector('#rawSaveMsg').textContent = 'Saved.'; }
+    else modal.querySelector('#rawSaveMsg').textContent = 'Could not save — check you are signed in as the owner.';
+  });
   backdrop.classList.add('open');
 }
 function closeModal(){ document.getElementById('modalBackdrop').classList.remove('open'); }
@@ -212,22 +260,122 @@ document.addEventListener('keydown', (e)=>{ if(e.key==='Escape') closeModal(); }
 document.getElementById('searchInput').addEventListener('input', (e)=>{ state.q = e.target.value; visibleCount = PAGE_SIZE; render(); });
 document.getElementById('sortSelect').addEventListener('change', (e)=>{ state.sort = e.target.value; visibleCount = PAGE_SIZE; render(); });
 
+function fmtRange(lo,hi){ const f=n=>'£'+Math.round(n).toLocaleString('en-GB'); return lo===hi?f(lo):f(lo)+'–'+f(hi); }
+function rawTotals(){
+  let lo=0, hi=0, n=0;
+  RAW_COMICS.forEach(c=>{ const v = rawEff(c); if(v){ lo += +v.lo||0; hi += +v.hi||0; if(v.tag==='owner') n++; } });
+  return {lo,hi,n};
+}
 function buildStats(){
   const total = RAW_COMICS.length;
+  const rt = rawTotals();
   const keyCount = RAW_COMICS.filter(c=>c.key && c.key!=='No').length;
   const signedCount = RAW_COMICS.filter(c=>c.signedBy).length;
   const pubs = new Set(RAW_COMICS.map(c=>c.publisher).filter(Boolean)).size;
   document.getElementById('heroStats').innerHTML = `
     <div class="stat"><b>${total}</b><span>Raw comics</span></div>
+    <div class="stat"><b>${fmtRange(rt.lo,rt.hi)}</b><span>Total value (rough estimate${rt.n?`, ${rt.n.toLocaleString('en-GB')} owner-verified`:''})</span></div>
     <div class="stat"><b>${keyCount}</b><span>Key issues</span></div>
     <div class="stat"><b>${signedCount}</b><span>Signed copies</span></div>
     <div class="stat"><b>${pubs}</b><span>Publishers</span></div>
   `;
 }
 
+// Give every raw comic a stable key (duplicates of the same book get -2, -3, ...) for saving values
+var RAW_VALUES = {};
+var isAdmin = false;
+(function(){
+  const seen = {};
+  RAW_COMICS.forEach(c=>{
+    const base = [c.series,c.issue,c.coverDate,c.variantDesc].map(x=>x||'').join('|').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'') || 'comic';
+    seen[base] = (seen[base]||0) + 1;
+    c._key = seen[base] === 1 ? base : base + '-' + seen[base];
+  });
+})();
+
 buildStats();
 buildControls();
 render();
+</script>
+
+<script type="module">
+  const firebaseConfig = {
+    apiKey: "AIzaSyBCcWqwx9WaPN_Z-SfvGX84I15RCkcK9qk",
+    authDomain: "comics-9af44.firebaseapp.com",
+    projectId: "comics-9af44",
+    storageBucket: "comics-9af44.firebasestorage.app",
+    messagingSenderId: "1047883288836",
+    appId: "1:1047883288836:web:4f9c45cd33e76134e0c051"
+  };
+  const ADMIN_EMAIL = "alexneal50@gmail.com";
+
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+  import {
+    getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged
+  } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+  import {
+    getFirestore, doc, getDoc, setDoc, serverTimestamp, deleteField
+  } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+  const provider = new GoogleAuthProvider();
+  const authBtn = document.getElementById('authBtn');
+  const authStatus = document.getElementById('authStatus');
+
+  authBtn.addEventListener('click', () => {
+    if(auth.currentUser){ signOut(auth); }
+    else { signInWithPopup(auth, provider).catch(err => { console.error(err); alert('Sign-in failed: ' + err.message); }); }
+  });
+
+  onAuthStateChanged(auth, (user) => {
+    if(user){
+      window.isAdmin = (user.email === ADMIN_EMAIL);
+      authStatus.textContent = user.email + (window.isAdmin ? ' (editing on)' : ' (view only)');
+      authBtn.textContent = 'Sign out';
+    } else {
+      window.isAdmin = false;
+      authStatus.textContent = '';
+      authBtn.textContent = 'Sign in';
+    }
+    render();
+  });
+
+  // All raw values live in ONE document (comicValues/raw-comics), so each page view costs a single read
+  async function loadRawValues(){
+    try{
+      const snap = await getDoc(doc(db, 'comicValues', 'raw-comics'));
+      window.RAW_VALUES = snap.exists() ? (snap.data().values || {}) : {};
+    } catch(err){
+      console.error('Could not load raw values from Firestore', err);
+    }
+    buildStats();
+    render();
+  }
+  loadRawValues();
+
+  // Called from the page's own script. Empty low AND high clears the value.
+  window.saveRawValue = async function(c, loStr, hiStr){
+    let lo = parseFloat(loStr), hi = parseFloat(hiStr);
+    const clear = isNaN(lo) && isNaN(hi);
+    if(!clear){
+      if(isNaN(lo)) lo = hi;
+      if(isNaN(hi)) hi = lo;
+      if(lo > hi){ const t = lo; lo = hi; hi = t; }
+    }
+    try{
+      await setDoc(doc(db, 'comicValues', 'raw-comics'),
+        { values: { [c._key]: clear ? deleteField() : [lo, hi] }, updatedAt: serverTimestamp() },
+        { merge: true });
+      if(clear) delete window.RAW_VALUES[c._key]; else window.RAW_VALUES[c._key] = [lo, hi];
+      buildStats();
+      return true;
+    } catch(err){
+      console.error(err);
+      return false;
+    }
+  };
 </script>
 </body>
 </html>

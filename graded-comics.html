@@ -309,13 +309,21 @@ document.addEventListener('keydown', (e)=>{ if(e.key==='Escape') closeModal(); }
 document.getElementById('searchInput').addEventListener('input', (e)=>{ state.q = e.target.value; render(); });
 document.getElementById('sortSelect').addEventListener('change', (e)=>{ state.sort = e.target.value; render(); });
 
+function fmtRange(lo,hi){ const f=n=>'£'+Math.round(n).toLocaleString('en-GB'); return lo===hi?f(lo):f(lo)+'–'+f(hi); }
+function gradedTotals(){
+  let lo=0, hi=0;
+  COMICS.forEach(c=>{ const v = LIVE_VALUES[comicKey(c.series,c.issue)] || DEFAULT_VALUES[comicKey(c.series,c.issue)]; if(v){ lo += +v[0]||0; hi += +v[1]||0; } });
+  return {lo,hi};
+}
 function buildStats(){
   const total = COMICS.length;
+  const gt = gradedTotals();
   const keyCount = COMICS.filter(c=>c.key && c.key!=='No').length;
   const signedCount = COMICS.filter(c=>c.signedBy).length;
   const pubs = new Set(COMICS.map(c=>c.publisher).filter(Boolean)).size;
   document.getElementById('heroStats').innerHTML = `
-    <div class="stat"><b>${total}</b><span>Slabbed comics</span></div>
+    <div class="stat"><b>${total}</b><span>Graded comics</span></div>
+    <div class="stat"><b>${fmtRange(gt.lo,gt.hi)}</b><span>Total value (estimate)</span></div>
     <div class="stat"><b>${keyCount}</b><span>Key issues</span></div>
     <div class="stat"><b>${signedCount}</b><span>Signed copies</span></div>
     <div class="stat"><b>${pubs}</b><span>Publishers</span></div>
@@ -391,9 +399,11 @@ render();
       const values = {};
       snap.forEach(d => {
         const data = d.data();
+        if(data.low == null || data.high == null) return; // skips the raw-comics values document
         values[d.id] = [data.low, data.high];
       });
       window.LIVE_VALUES = values;
+      buildStats(); // refresh the total now the saved values have loaded
     } catch(err){
       console.error('Could not load values from Firestore', err);
     }
@@ -429,6 +439,7 @@ render();
         low: lo, high: hi, updatedAt: serverTimestamp()
       });
       LIVE_VALUES[key] = [lo, hi];
+      buildStats();
       msg.textContent = 'Saved.';
       openModal(c); // refresh modal to show the new value
     } catch(err){
