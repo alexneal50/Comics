@@ -429,7 +429,7 @@ render();
     try{
       const snap = await getDocs(collection(db, 'comicPhotos'));
       const photos = {};
-      snap.forEach(d => { photos[d.id] = d.data().url; });
+      snap.forEach(d => { const u = d.data().url; if(u) photos[d.id] = u; }); // skips the raw-photos document
       window.PHOTOS = photos;
       render();
     } catch(err){

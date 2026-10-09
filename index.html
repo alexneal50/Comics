@@ -37,7 +37,7 @@
     </a>
     <a class="home-card" href="raw-comics.html">
       <h3>Raw Comics</h3>
-      <p>3,437 ungraded books straight from the long box — searchable by series, publisher and key issue status.</p>
+      <p><span id="rawCount">All your</span> ungraded books straight from the long box — searchable by series, publisher and key issue status.</p>
       <span class="go">Browse raw comics →</span>
     </a>
   </div>
@@ -58,6 +58,7 @@ function renderTotals(){
   let gl=0, gh=0, rl=0, rh=0, rn=0, own=0;
   GRADED_KEYS.forEach(k=>{ const v = LIVE_VALUES[k] || DEFAULT_VALUES[k]; if(v){ gl += +v[0]||0; gh += +v[1]||0; } });
   const defs = (typeof RAW_DEFAULTS !== 'undefined') ? RAW_DEFAULTS : {};
+  const rc = document.getElementById('rawCount'); if(rc && Object.keys(defs).length) rc.textContent = Object.keys(defs).length.toLocaleString('en-GB');
   Object.keys(defs).forEach(k=>{ const v = RAW_VALUES[k] || defs[k]; if(v){ rl += +v[0]||0; rh += +v[1]||0; rn++; if(RAW_VALUES[k]) own++; } });
   document.getElementById('homeTotals').innerHTML = `
     <div class="total-card"><div class="lbl">Graded comics value</div><div class="amt">${fmtRange(gl,gh)}</div><div class="sub">${GRADED_KEYS.length} graded comics</div></div>

@@ -26,7 +26,7 @@
   <div class="hero-inner">
     <p class="hero-eyebrow">A PERSONAL ARCHIVE</p>
     <h1 class="hero-title">Add Photos</h1>
-    <p class="hero-sub">Attach a real photo of your own slab to any graded comic — drag and drop on desktop, or use your phone's camera on mobile.</p>
+    <p class="hero-sub">Attach a real photo of your own copy to any graded or raw comic — drag and drop on desktop, or use your phone's camera on mobile.</p>
   </div>
 </header>
 
@@ -37,6 +37,10 @@
 
   <div class="upload-shell" id="uploadShell" style="display:none">
     <div>
+      <div class="chip-row" id="modeChips" style="margin-bottom:16px">
+        <span class="chip active" data-mode="graded">Graded comics</span>
+        <span class="chip" data-mode="raw">Raw comics</span>
+      </div>
       <div class="picker-box">
         <label>1. Which comic is this a photo of?</label>
         <input class="picker-input" id="pickerInput" type="text" placeholder="Start typing a series name or issue number…" autocomplete="off">
@@ -77,8 +81,8 @@
     </div>
   </div>
 
-  <h3 style="font-family:'Fraunces',serif; margin-top: 34px;">All comics</h3>
-  <p class="section-intro">Tap any comic below to jump straight to it in the picker above.</p>
+  <h3 style="font-family:'Fraunces',serif; margin-top: 34px;" id="gridHeading">All graded comics</h3>
+  <p class="section-intro" id="gridIntro">Tap any comic below to jump straight to it in the picker above.</p>
   <div class="photo-grid" id="photoGrid"></div>
 </main>
 
@@ -91,11 +95,50 @@ function comicKey(series, issue){
   return (series + '|' + (issue || '')).toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
 }
 function esc(s){ return (s==null?'':String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;'); }
+function thumbURL(url, w){
+  return /res\.cloudinary\.com/.test(url) ? url.replace('/upload/', '/upload/w_'+w+',c_limit,q_auto,f_auto/') : url;
+}
 
 var isAdmin = false;
-var PHOTOS = {}; // comicKey -> download URL, filled from Firestore
-var selectedComic = null;
+var PHOTOS = {};      // graded: comicKey -> photo URL
+var RAW_PHOTOS = {};  // raw: comic _key -> photo URL
+var mode = 'graded';  // 'graded' or 'raw'
+var selected = null;  // {mode, key, label}
 var pendingFile = null;
+var rawReady = false;
+var entryCache = { graded: null, raw: null };
+var lastMatches = [];
+
+// raw-data.js is large, so it is only fetched the first time you switch to Raw comics
+function loadRawData(){
+  return new Promise(resolve => {
+    if(rawReady) return resolve(true);
+    const s = document.createElement('script');
+    s.src = 'raw-data.js';
+    s.onload = () => { rawReady = true; resolve(true); };
+    s.onerror = () => resolve(false);
+    document.head.appendChild(s);
+  });
+}
+
+function rawLabel(c){
+  return c.series + (c.issue ? (' #'+c.issue) : '') + (c.coverDate ? (' ('+c.coverDate+')') : '') + (c.variantDesc ? (' – '+c.variantDesc) : '');
+}
+function entries(){
+  if(entryCache[mode]) return entryCache[mode];
+  let list = [];
+  if(mode === 'graded'){
+    list = COMICS_MINI.map(c => ({ mode:'graded', key: comicKey(c.series, c.issue), label: c.series + (c.issue ? (' #'+c.issue) : ''), series: c.series, issue: c.issue }));
+  } else if(rawReady){
+    list = RAW_COMICS.map(c => ({ mode:'raw', key: c._key, label: rawLabel(c), series: c.series, issue: c.issue, coverDate: c.coverDate }));
+  } else {
+    return [];
+  }
+  list.forEach(e => { e.hay = e.label.toLowerCase(); });
+  entryCache[mode] = list;
+  return list;
+}
+function photoFor(e){ return e.mode === 'raw' ? RAW_PHOTOS[e.key] : PHOTOS[e.key]; }
 
 const pickerInput = document.getElementById('pickerInput');
 const pickerResults = document.getElementById('pickerResults');
@@ -104,28 +147,48 @@ const pickerSelected = document.getElementById('pickerSelected');
 pickerInput.addEventListener('input', () => {
   const q = pickerInput.value.trim().toLowerCase();
   if(!q){ pickerResults.classList.remove('open'); pickerResults.innerHTML=''; return; }
-  const matches = COMICS_MINI.filter(c =>
-    c.series.toLowerCase().includes(q) || (c.issue||'').toLowerCase().includes(q)
-  ).slice(0, 20);
-  pickerResults.innerHTML = matches.map((c,i) =>
-    `<div class="picker-result" data-idx="${COMICS_MINI.indexOf(c)}">${esc(c.series)}${c.issue?(' #'+esc(c.issue)):''}</div>`
-  ).join('');
+  const tokens = q.split(/\s+/);
+  lastMatches = entries().filter(e => tokens.every(t => e.hay.includes(t))).slice(0, 30);
+  pickerResults.innerHTML = lastMatches.length
+    ? lastMatches.map((e,i) => `<div class="picker-result" data-idx="${i}">${esc(e.label)}${photoFor(e)?' 📷':''}</div>`).join('')
+    : `<div class="picker-result" style="cursor:default">No matches</div>`;
   pickerResults.classList.add('open');
-  pickerResults.querySelectorAll('.picker-result').forEach(el=>{
-    el.addEventListener('click', () => selectComic(COMICS_MINI[parseInt(el.dataset.idx)]));
+  pickerResults.querySelectorAll('.picker-result[data-idx]').forEach(el=>{
+    el.addEventListener('click', () => selectEntry(lastMatches[parseInt(el.dataset.idx)]));
   });
 });
 
-function selectComic(c){
-  selectedComic = c;
-  pickerInput.value = c.series + (c.issue ? (' #'+c.issue) : '');
+function selectEntry(e){
+  selected = e;
+  pickerInput.value = e.label;
   pickerResults.classList.remove('open');
-  const key = comicKey(c.series, c.issue);
-  const existing = PHOTOS[key];
-  pickerSelected.innerHTML = `Selected: <b>${esc(c.series)}${c.issue?(' #'+esc(c.issue)):''}</b>` +
-    (existing ? ' — already has a photo, uploading a new one will replace it.' : ' — no photo yet.');
+  pickerSelected.innerHTML = `Selected: <b>${esc(e.label)}</b>` +
+    (photoFor(e) ? ' — already has a photo, uploading a new one will replace it.' : ' — no photo yet.');
   pickerSelected.classList.add('show');
 }
+
+// Graded / Raw switch
+document.querySelectorAll('#modeChips .chip').forEach(chip => {
+  chip.addEventListener('click', async () => {
+    const next = chip.dataset.mode;
+    if(next === mode) return;
+    if(next === 'raw' && !rawReady){
+      pickerSelected.innerHTML = 'Loading your raw comics…';
+      pickerSelected.classList.add('show');
+      const ok = await loadRawData();
+      if(!ok){ pickerSelected.innerHTML = 'Could not load raw-data.js — make sure it is uploaded next to this page.'; return; }
+    }
+    mode = next;
+    document.querySelectorAll('#modeChips .chip').forEach(c => c.classList.toggle('active', c.dataset.mode === mode));
+    selected = null; pendingFile = null;
+    pickerInput.value = '';
+    pickerResults.classList.remove('open');
+    pickerSelected.classList.remove('show');
+    previewRow.style.display = 'none';
+    pickerInput.placeholder = mode === 'raw' ? 'Type a series name and issue, e.g. "spider-man 300"…' : 'Start typing a series name or issue number…';
+    renderGrid();
+  });
+});
 
 // Dropzone wiring
 const dropzone = document.getElementById('dropzone');
@@ -167,28 +230,40 @@ function handleFile(file){
 }
 
 document.getElementById('saveBtn').addEventListener('click', () => {
-  if(!selectedComic){ saveMsg.textContent = 'Pick a comic first.'; return; }
+  if(!selected){ saveMsg.textContent = 'Pick a comic first.'; return; }
   if(!pendingFile){ saveMsg.textContent = 'Choose or drop a photo first.'; return; }
-  window.uploadComicPhoto(selectedComic, pendingFile, saveMsg);
+  window.uploadComicPhoto(selected, pendingFile, saveMsg);
 });
 
 function renderGrid(){
   const grid = document.getElementById('photoGrid');
-  grid.innerHTML = COMICS_MINI.map(c => {
-    const key = comicKey(c.series, c.issue);
-    const url = PHOTOS[key];
+  const heading = document.getElementById('gridHeading');
+  const intro = document.getElementById('gridIntro');
+  let list;
+  if(mode === 'graded'){
+    heading.textContent = 'All graded comics';
+    intro.textContent = 'Tap any comic below to jump straight to it in the picker above.';
+    list = entries();
+  } else {
+    const withPhotos = entries().filter(e => RAW_PHOTOS[e.key]);
+    heading.textContent = 'Raw comics with photos (' + withPhotos.length + ')';
+    intro.textContent = 'With thousands of raw comics, only the ones that already have a photo are listed here — use the search box above to find any other. Tap a photo to replace it.';
+    list = withPhotos;
+  }
+  grid.innerHTML = list.map((e, i) => {
+    const url = photoFor(e);
     const thumb = url
-      ? `<img class="thumb" src="${esc(url)}" alt="${esc(c.series)}">`
+      ? `<img class="thumb" loading="lazy" src="${esc(thumbURL(url, 300))}" alt="${esc(e.label)}">`
       : `<div class="thumb-placeholder">No photo yet</div>`;
-    return `<div class="photo-tile" data-idx="${COMICS_MINI.indexOf(c)}">
+    return `<div class="photo-tile" data-idx="${i}">
       ${thumb}
-      <div class="cap"><b>${esc(c.series)}</b>${c.issue?('#'+esc(c.issue)):''}</div>
+      <div class="cap"><b>${esc(e.series)}</b>${e.issue?('#'+esc(e.issue)):''}${e.coverDate?(' · '+esc(e.coverDate)):''}</div>
     </div>`;
   }).join('');
   grid.querySelectorAll('.photo-tile').forEach(el=>{
     el.addEventListener('click', () => {
       if(!isAdmin) return;
-      selectComic(COMICS_MINI[parseInt(el.dataset.idx)]);
+      selectEntry(list[parseInt(el.dataset.idx)]);
       window.scrollTo({top:0, behavior:'smooth'});
     });
   });
@@ -270,7 +345,10 @@ window.onLongBoxReady = function(){
     try{
       const snap = await getDocs(collection(db, 'comicPhotos'));
       const photos = {};
-      snap.forEach(d => { photos[d.id] = d.data().url; });
+      snap.forEach(d => {
+        if(d.id === 'raw-photos'){ window.RAW_PHOTOS = d.data().photos || {}; }   // one document holds every raw comic photo
+        else { const u = d.data().url; if(u) photos[d.id] = u; }
+      });
       window.PHOTOS = photos;
     } catch(err){
       console.error('Could not load photos', err);
@@ -299,16 +377,19 @@ window.onLongBoxReady = function(){
     });
   }
 
-  window.uploadComicPhoto = async function(comic, file, msgEl){
-    const key = comicKey(comic.series, comic.issue); // shared with graded-comics.html — do not change the format here without changing it there too
+  // target = {mode: 'graded' | 'raw', key}. Graded keys come from comicKey(); raw keys are each comic's _key from raw-data.js
+  window.uploadComicPhoto = async function(target, file, msgEl){
+    const isRaw = target.mode === 'raw';
+    const key = target.key;
+    const publicId = (isRaw ? 'raw-' : '') + key;
     msgEl.textContent = 'Uploading…';
     try{
       const resized = await resizeImage(file, MAX_DIMENSION);
 
       const formData = new FormData();
-      formData.append('file', resized, key + '.jpg');
+      formData.append('file', resized, publicId + '.jpg');
       formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
-      formData.append('public_id', key); // re-uploading the same comic overwrites its old photo on Cloudinary too
+      formData.append('public_id', publicId); // re-uploading the same comic replaces its old photo
 
       const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`, {
         method: 'POST',
@@ -320,8 +401,16 @@ window.onLongBoxReady = function(){
       }
       const url = data.secure_url;
 
-      await setDoc(doc(db, 'comicPhotos', key), { url, updatedAt: serverTimestamp() });
-      window.PHOTOS[key] = url;
+      if(isRaw){
+        // all raw photo URLs live in ONE document, so the Raw page needs just one read
+        await setDoc(doc(db, 'comicPhotos', 'raw-photos'),
+          { photos: { [key]: url }, updatedAt: serverTimestamp() },
+          { merge: true });
+        window.RAW_PHOTOS[key] = url;
+      } else {
+        await setDoc(doc(db, 'comicPhotos', key), { url, updatedAt: serverTimestamp() });
+        window.PHOTOS[key] = url;
+      }
       msgEl.textContent = 'Saved!';
       if(window.onLongBoxReady) window.onLongBoxReady();
     } catch(err){
