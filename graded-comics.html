@@ -42,6 +42,8 @@
       <option value="grade-desc">Sort: Grade (high–low)</option>
       <option value="date-asc">Sort: Cover date (oldest first)</option>
       <option value="date-desc">Sort: Cover date (newest first)</option>
+      <option value="value-asc">Sort: Value (low–high)</option>
+      <option value="value-desc">Sort: Value (high–low)</option>
     </select>
   </div>
 
@@ -182,6 +184,11 @@ function filtered(){
   });
   if(state.sort==='series') list.sort((a,b)=> a.series.localeCompare(b.series) || (gradeNumber(a.grade)-gradeNumber(b.grade)));
   if(state.sort==='grade-desc') list.sort((a,b)=> (gradeNumber(b.grade)||0)-(gradeNumber(a.grade)||0));
+  if(state.sort==='value-asc' || state.sort==='value-desc'){
+    const mid = (c)=>{ const v = LIVE_VALUES[comicKey(c.series,c.issue)] || DEFAULT_VALUES[comicKey(c.series,c.issue)]; return v ? ((+v[0]||0)+(+v[1]||0))/2 : null; };
+    const dir = state.sort==='value-asc' ? 1 : -1;
+    list.sort((a,b)=>{ const x=mid(a), y=mid(b); if(x===null && y===null) return a.series.localeCompare(b.series); if(x===null) return 1; if(y===null) return -1; return (x-y)*dir || a.series.localeCompare(b.series); });
+  }
   if(state.sort==='date-asc' || state.sort==='date-desc'){
     const toTime = (s)=> s ? new Date(s+' 1') .getTime() || 0 : 0;
     list.sort((a,b)=> toTime(a.coverDate)-toTime(b.coverDate));
@@ -212,7 +219,13 @@ function cardHTML(c, idx){
     </div>
     <div class="slab-title">${esc(c.title||'')}</div>
     <div class="badges">${keyBadge}${signedBadge}${pubBadge}</div>
+    ${cardValue(c)}
   </div>`;
+}
+
+function cardValue(c){
+  const v = LIVE_VALUES[comicKey(c.series,c.issue)] || DEFAULT_VALUES[comicKey(c.series,c.issue)];
+  return v ? `<div class="card-val">${fmtRange(+v[0]||0,+v[1]||0)}</div>` : '';
 }
 
 function render(){
@@ -404,6 +417,7 @@ render();
       });
       window.LIVE_VALUES = values;
       buildStats(); // refresh the total now the saved values have loaded
+      render();     // refresh card values and any value sort
     } catch(err){
       console.error('Could not load values from Firestore', err);
     }
@@ -440,6 +454,7 @@ render();
       });
       LIVE_VALUES[key] = [lo, hi];
       buildStats();
+      render();
       msg.textContent = 'Saved.';
       openModal(c); // refresh modal to show the new value
     } catch(err){

@@ -49,6 +49,8 @@
       <option value="series">Sort: Series A–Z</option>
       <option value="date-asc">Sort: Cover date (oldest first)</option>
       <option value="date-desc">Sort: Cover date (newest first)</option>
+      <option value="value-asc">Sort: Value (low–high)</option>
+      <option value="value-desc">Sort: Value (high–low)</option>
     </select>
   </div>
 
@@ -130,6 +132,11 @@ function filtered(){
     return true;
   });
   if(state.sort==='series') list.sort((a,b)=> (a.series||'').localeCompare(b.series||''));
+  if(state.sort==='value-asc' || state.sort==='value-desc'){
+    const mid = (c)=>{ const v = rawEff(c); return v ? ((+v.lo||0)+(+v.hi||0))/2 : null; };
+    const dir = state.sort==='value-asc' ? 1 : -1;
+    list.sort((a,b)=>{ const x=mid(a), y=mid(b); if(x===null && y===null) return (a.series||'').localeCompare(b.series||''); if(x===null) return 1; if(y===null) return -1; return (x-y)*dir || (a.series||'').localeCompare(b.series||''); });
+  }
   if(state.sort==='date-asc' || state.sort==='date-desc'){
     const toTime = (s)=> s ? new Date(s+' 1').getTime() || 0 : 0;
     list.sort((a,b)=> toTime(a.coverDate)-toTime(b.coverDate));
